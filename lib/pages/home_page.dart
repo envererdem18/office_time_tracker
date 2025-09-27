@@ -120,7 +120,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -151,9 +151,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
               const SizedBox(height: 32),
 
-              // Bugünkü durum kartı
-              if (todayRecord != null) _buildTodayStatusCard(todayRecord),
-
               // Giriş butonu
               CheckInButton(
                 onPressed: hasCheckedIn ? null : _handleCheckIn,
@@ -171,6 +168,9 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
 
               const SizedBox(height: 24),
+
+              // Bugünkü durum kartı
+              if (todayRecord != null) _buildTodayStatusCard(todayRecord),
 
               // Durum mesajı
               _buildStatusMessage(hasCheckedIn, hasCheckedOut),
@@ -190,7 +190,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.1),
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -299,9 +299,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

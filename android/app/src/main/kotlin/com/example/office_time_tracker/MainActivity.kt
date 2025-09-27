@@ -1,4 +1,4 @@
-package com.example.office_time_tracker
+package com.envererdem.office_time_tracker
 
 import io.flutter.embedding.android.FlutterActivity
 

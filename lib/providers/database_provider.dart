@@ -14,9 +14,14 @@ final checkInOutListProvider = FutureProvider<List<CheckInOut>>((ref) async {
   return databaseService.getAllCheckInOuts();
 });
 
+// Database değişikliklerini takip etmek için state provider
+final _databaseChangeNotifierProvider = StateProvider<int>((ref) => 0);
+
 // Bugünkü kaydı getiren provider
 final todayCheckInOutProvider = Provider<CheckInOut?>((ref) {
   final databaseService = ref.read(databaseServiceProvider);
+  // Database değişiklik notifier'ını watch et
+  ref.watch(_databaseChangeNotifierProvider);
   return databaseService.getTodayCheckInOut();
 });
 
@@ -43,7 +48,8 @@ final checkInActionProvider = Provider<Future<void> Function()>((ref) {
   return () async {
     final databaseService = ref.read(databaseServiceProvider);
     await databaseService.checkInToday();
-    ref.invalidate(todayCheckInOutProvider);
+    // Database değişiklik notifier'ını güncelle
+    ref.read(_databaseChangeNotifierProvider.notifier).state++;
     ref.invalidate(checkInOutListProvider);
     ref.invalidate(filteredCheckInOutListProvider);
   };
@@ -54,7 +60,8 @@ final checkOutActionProvider = Provider<Future<void> Function()>((ref) {
   return () async {
     final databaseService = ref.read(databaseServiceProvider);
     await databaseService.checkOutToday();
-    ref.invalidate(todayCheckInOutProvider);
+    // Database değişiklik notifier'ını güncelle
+    ref.read(_databaseChangeNotifierProvider.notifier).state++;
     ref.invalidate(checkInOutListProvider);
     ref.invalidate(filteredCheckInOutListProvider);
   };
@@ -65,7 +72,8 @@ final deleteRecordActionProvider = Provider<Future<void> Function(DateTime)>((re
   return (DateTime date) async {
     final databaseService = ref.read(databaseServiceProvider);
     await databaseService.deleteCheckInOut(date);
-    ref.invalidate(todayCheckInOutProvider);
+    // Database değişiklik notifier'ını güncelle
+    ref.read(_databaseChangeNotifierProvider.notifier).state++;
     ref.invalidate(checkInOutListProvider);
     ref.invalidate(filteredCheckInOutListProvider);
   };
@@ -76,7 +84,8 @@ final updateRecordActionProvider = Provider<Future<void> Function(CheckInOut)>((
   return (CheckInOut record) async {
     final databaseService = ref.read(databaseServiceProvider);
     await databaseService.updateCheckInOut(record);
-    ref.invalidate(todayCheckInOutProvider);
+    // Database değişiklik notifier'ını güncelle
+    ref.read(_databaseChangeNotifierProvider.notifier).state++;
     ref.invalidate(checkInOutListProvider);
     ref.invalidate(filteredCheckInOutListProvider);
   };

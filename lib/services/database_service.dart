@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/check_in_out.dart';
@@ -130,12 +131,12 @@ class DatabaseService {
       // Yeni kayıt oluştur
       final newRecord = CheckInOut(date: todayDate, checkInTime: today);
       await addCheckInOut(newRecord);
-      print('✅ Yeni giriş kaydı oluşturuldu: ${_getDateKey(todayDate)}');
+      debugPrint('✅ Yeni giriş kaydı oluşturuldu: ${_getDateKey(todayDate)}');
     } else {
       // Mevcut kaydı güncelle
       existingRecord.checkInTime = today;
       await updateCheckInOut(existingRecord);
-      print('✅ Mevcut kayıt güncellendi: ${_getDateKey(todayDate)}');
+      debugPrint('✅ Mevcut kayıt güncellendi: ${_getDateKey(todayDate)}');
     }
 
     debugBoxStatus();
@@ -151,12 +152,12 @@ class DatabaseService {
     if (existingRecord != null) {
       existingRecord.checkOutTime = today;
       await updateCheckInOut(existingRecord);
-      print('✅ Çıkış kaydı güncellendi: ${_getDateKey(todayDate)}');
+      debugPrint('✅ Çıkış kaydı güncellendi: ${_getDateKey(todayDate)}');
     } else {
       // Eğer giriş kaydı yoksa, sadece çıkış kaydı oluştur
       final newRecord = CheckInOut(date: todayDate, checkOutTime: today);
       await addCheckInOut(newRecord);
-      print('✅ Yeni çıkış kaydı oluşturuldu: ${_getDateKey(todayDate)}');
+      debugPrint('✅ Yeni çıkış kaydı oluşturuldu: ${_getDateKey(todayDate)}');
     }
 
     debugBoxStatus();
@@ -169,13 +170,13 @@ class DatabaseService {
 
   // Debug: Box durumunu kontrol et
   void debugBoxStatus() {
-    print('=== HIVE BOX DEBUG ===');
-    print('Box isOpen: ${_box.isOpen}');
-    print('Box length: ${_box.length}');
-    print('Box keys: ${_box.keys.toList()}');
-    print(
+    debugPrint('=== HIVE BOX DEBUG ===');
+    debugPrint('Box isOpen: ${_box.isOpen}');
+    debugPrint('Box length: ${_box.length}');
+    debugPrint('Box keys: ${_box.keys.toList()}');
+    debugPrint(
       'Box values: ${_box.values.map((e) => '${e.date} - ${e.checkInTime} - ${e.checkOutTime}').toList()}',
     );
-    print('=====================');
+    debugPrint('=====================');
   }
 }

@@ -12,7 +12,6 @@ void main() async {
   final databaseService = DatabaseService();
   await databaseService.init();
 
-  print('🚀 Uygulama başlatıldı');
   databaseService.debugBoxStatus();
 
   runApp(ProviderScope(child: const OfficeTimeTrackerApp()));

@@ -28,7 +28,7 @@ class CustomCard extends StatelessWidget {
         color: backgroundColor ?? AppTheme.cardColor,
         borderRadius: BorderRadius.circular(16),
         elevation: elevation ?? 2,
-        shadowColor: AppTheme.primaryColor.withOpacity(0.1),
+        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.1),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),

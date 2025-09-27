@@ -50,6 +50,46 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     });
   }
 
+  // Seçilen zamanın gelecekte olup olmadığını kontrol et
+  bool _isTimeInFuture(TimeOfDay selectedTime) {
+    final now = DateTime.now();
+    final recordDate = widget.record.date;
+
+    // Eğer kayıt tarihi bugün değilse, gelecek kontrol etmeye gerek yok
+    if (!_isSameDay(recordDate, now)) {
+      return false;
+    }
+
+    // Bugünkü tarih için seçilen zamanı DateTime'a çevir
+    final selectedDateTime = DateTime(
+      recordDate.year,
+      recordDate.month,
+      recordDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+
+    return selectedDateTime.isAfter(now);
+  }
+
+  // İki tarihin aynı gün olup olmadığını kontrol et
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
+  // Gelecek zaman seçimi için uyarı göster
+  void _showFutureTimeWarning() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Gelecek bir saat seçemezsiniz!'),
+        backgroundColor: AppTheme.errorColor,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<void> _selectCheckInTime() async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -67,6 +107,12 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     );
 
     if (picked != null) {
+      // Gelecek zaman kontrolü
+      if (_isTimeInFuture(picked)) {
+        _showFutureTimeWarning();
+        return;
+      }
+
       setState(() {
         _checkInTime = picked;
         _hasChanges = true;
@@ -92,6 +138,12 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     );
 
     if (picked != null) {
+      // Gelecek zaman kontrolü
+      if (_isTimeInFuture(picked)) {
+        _showFutureTimeWarning();
+        return;
+      }
+
       setState(() {
         _checkOutTime = picked;
         _hasChanges = true;
@@ -210,7 +262,7 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
               if (_hasChanges) {
                 await _saveChanges(showSnackBar: false);
               }
-              if (mounted) {
+              if (context.mounted) {
                 context.pop();
               }
             },
@@ -221,7 +273,7 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -308,7 +360,7 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.1),
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -319,7 +371,7 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.calendar_today, color: AppTheme.primaryColor, size: 24),
@@ -364,7 +416,7 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -382,7 +434,7 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: color, size: 24),
@@ -439,10 +491,10 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.successColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.successColor.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.successColor.withOpacity(0.1),
+            color: AppTheme.successColor.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -453,7 +505,7 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.successColor.withOpacity(0.1),
+              color: AppTheme.successColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.schedule, color: AppTheme.successColor, size: 24),
@@ -488,9 +540,9 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.05),
+        color: AppTheme.primaryColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -498,7 +550,7 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Değişiklikleriniz otomatik olarak kaydedilir. Sayfadan çıktığınızda son değişiklikler de kaydedilecektir.',
+              'Değişiklikleriniz otomatik olarak kaydedilir. Gelecek tarih veya saatler seçilemez. Sayfadan çıktığınızda son değişiklikler de kaydedilecektir.',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: AppTheme.primaryColor, height: 1.4),
