@@ -3,8 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/database_provider.dart';
+import '../router/app_router.dart';
 import '../theme/app_theme.dart';
-import '../widgets/custom_button.dart';
+import '../widgets/molecules/custom_button.dart';
+import '../widgets/molecules/greeting_card_widget.dart';
+import '../widgets/molecules/status_message_widget.dart';
+import '../widgets/molecules/today_status_card_widget.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -85,6 +89,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  String _getGreetingMessage() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Günaydın! Yeni bir güne başlayalım.';
+    } else if (hour < 18) {
+      return 'İyi günler! Çalışmalarınız nasıl gidiyor?';
+    } else {
+      return 'İyi akşamlar! Günü tamamlamaya hazır mısınız?';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final todayRecord = ref.watch(todayCheckInOutProvider);
@@ -101,7 +116,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.play_circle_outline),
-            onPressed: () => context.pushNamed('demo'),
+            onPressed: () => context.pushNamed(AppRoute.demo.name),
             tooltip: 'Demo',
           ),
         ],
@@ -113,41 +128,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Karşılama metni
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.business, size: 48, color: AppTheme.primaryColor),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Hoş Geldiniz!',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _getGreetingMessage(),
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge?.copyWith(color: AppTheme.textSecondaryColor),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
+              GreetingCardWidget(title: 'Hoş Geldiniz!', message: _getGreetingMessage()),
 
               const SizedBox(height: 32),
 
@@ -170,164 +151,17 @@ class _HomePageState extends ConsumerState<HomePage> {
               const SizedBox(height: 24),
 
               // Bugünkü durum kartı
-              if (todayRecord != null) _buildTodayStatusCard(todayRecord),
+              if (todayRecord != null) TodayStatusCardWidget(todayRecord: todayRecord),
 
               // Durum mesajı
-              _buildStatusMessage(hasCheckedIn, hasCheckedOut),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTodayStatusCard(dynamic todayRecord) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.only(bottom: 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Bugünkü Durum',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(color: AppTheme.primaryColor),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTimeInfo(
-                  'Giriş',
-                  todayRecord.checkInTimeString,
-                  AppTheme.checkInColor,
-                  Icons.login,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildTimeInfo(
-                  'Çıkış',
-                  todayRecord.checkOutTimeString,
-                  AppTheme.checkOutColor,
-                  Icons.logout,
-                ),
+              StatusMessageWidget(
+                hasCheckedIn: hasCheckedIn,
+                hasCheckedOut: hasCheckedOut,
               ),
             ],
           ),
-          if (todayRecord.workDuration != null) ...[
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.access_time, color: AppTheme.primaryColor, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Toplam: ${todayRecord.workDurationString}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeInfo(String label, String time, Color color, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: color, size: 16),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondaryColor),
-            ),
-          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          time,
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(color: color, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusMessage(bool hasCheckedIn, bool hasCheckedOut) {
-    String message;
-    Color color;
-    IconData icon;
-
-    if (!hasCheckedIn) {
-      message = 'Giriş yapmak için yeşil butona basın';
-      color = AppTheme.checkInColor;
-      icon = Icons.info_outline;
-    } else if (!hasCheckedOut) {
-      message = 'Çıkış yapmayı unutmayın!';
-      color = AppTheme.warningColor;
-      icon = Icons.warning_amber_outlined;
-    } else {
-      message = 'Günün kaydı tamamlandı. İyi günler!';
-      color = AppTheme.successColor;
-      icon = Icons.check_circle_outline;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
       ),
     );
-  }
-
-  String _getGreetingMessage() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Günaydın! Yeni bir güne başlayalım.';
-    } else if (hour < 18) {
-      return 'İyi günler! Çalışmalarınız nasıl gidiyor?';
-    } else {
-      return 'İyi akşamlar! Günü tamamlamaya hazır mısınız?';
-    }
   }
 }

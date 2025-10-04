@@ -7,6 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../models/check_in_out.dart';
 import '../providers/database_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/molecules/date_card_widget.dart';
+import '../widgets/molecules/info_card_widget.dart';
+import '../widgets/molecules/time_card_widget.dart';
+import '../widgets/molecules/work_duration_card_widget.dart';
 
 class EditRecordPage extends ConsumerStatefulWidget {
   final CheckInOut record;
@@ -50,17 +54,14 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     });
   }
 
-  // Seçilen zamanın gelecekte olup olmadığını kontrol et
   bool _isTimeInFuture(TimeOfDay selectedTime) {
     final now = DateTime.now();
     final recordDate = widget.record.date;
 
-    // Eğer kayıt tarihi bugün değilse, gelecek kontrol etmeye gerek yok
     if (!_isSameDay(recordDate, now)) {
       return false;
     }
 
-    // Bugünkü tarih için seçilen zamanı DateTime'a çevir
     final selectedDateTime = DateTime(
       recordDate.year,
       recordDate.month,
@@ -72,14 +73,12 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     return selectedDateTime.isAfter(now);
   }
 
-  // İki tarihin aynı gün olup olmadığını kontrol et
   bool _isSameDay(DateTime date1, DateTime date2) {
     return date1.year == date2.year &&
         date1.month == date2.month &&
         date1.day == date2.day;
   }
 
-  // Gelecek zaman seçimi için uyarı göster
   void _showFutureTimeWarning() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -107,7 +106,6 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     );
 
     if (picked != null) {
-      // Gelecek zaman kontrolü
       if (_isTimeInFuture(picked)) {
         _showFutureTimeWarning();
         return;
@@ -138,7 +136,6 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     );
 
     if (picked != null) {
-      // Gelecek zaman kontrolü
       if (_isTimeInFuture(picked)) {
         _showFutureTimeWarning();
         return;
@@ -152,22 +149,6 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     }
   }
 
-  void _clearCheckInTime() {
-    setState(() {
-      _checkInTime = null;
-      _hasChanges = true;
-    });
-    _scheduleAutoSave();
-  }
-
-  void _clearCheckOutTime() {
-    setState(() {
-      _checkOutTime = null;
-      _hasChanges = true;
-    });
-    _scheduleAutoSave();
-  }
-
   Future<void> _saveChanges({bool showSnackBar = true}) async {
     if (!_hasChanges) return;
 
@@ -176,7 +157,6 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     });
 
     try {
-      // Yeni DateTime objelerini oluştur
       DateTime? newCheckInTime;
       DateTime? newCheckOutTime;
 
@@ -200,14 +180,12 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
         );
       }
 
-      // Güncellenmiş kaydı oluştur
       final updatedRecord = CheckInOut(
         date: widget.record.date,
         checkInTime: newCheckInTime,
         checkOutTime: newCheckOutTime,
       );
 
-      // Veritabanını güncelle
       final updateAction = ref.read(updateRecordActionProvider);
       await updateAction(updatedRecord);
 
@@ -239,17 +217,17 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     }
   }
 
-  Future<bool> _onWillPop() async {
-    if (_hasChanges) {
+  void _onPopInvoked(bool didPop, dynamic result) async {
+    if (_hasChanges && !didPop) {
       await _saveChanges(showSnackBar: false);
     }
-    return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: _onPopInvoked,
       child: Scaffold(
         backgroundColor: AppTheme.backgroundColor,
         appBar: AppBar(
@@ -309,16 +287,15 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Tarih bilgisi kartı
-              _buildDateCard(),
+              DateCardWidget(record: widget.record),
 
               const SizedBox(height: 24),
 
               // Giriş saati kartı
-              _buildTimeCard(
+              TimeCardWidget(
                 title: 'Giriş Saati',
                 time: _checkInTime,
                 onTap: _selectCheckInTime,
-                onClear: _clearCheckInTime,
                 color: AppTheme.checkInColor,
                 icon: Icons.login,
               ),
@@ -326,11 +303,10 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
               const SizedBox(height: 16),
 
               // Çıkış saati kartı
-              _buildTimeCard(
+              TimeCardWidget(
                 title: 'Çıkış Saati',
                 time: _checkOutTime,
                 onTap: _selectCheckOutTime,
-                onClear: _clearCheckOutTime,
                 color: AppTheme.checkOutColor,
                 icon: Icons.logout,
               ),
@@ -338,225 +314,19 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
               const SizedBox(height: 24),
 
               // Çalışma süresi önizlemesi
-              if (_checkInTime != null && _checkOutTime != null) _buildWorkDurationCard(),
+              if (_checkInTime != null && _checkOutTime != null)
+                WorkDurationCardWidget(
+                  checkInTime: _checkInTime!,
+                  checkOutTime: _checkOutTime!,
+                ),
 
               const SizedBox(height: 32),
 
               // Bilgilendirme kartı
-              _buildInfoCard(),
+              const InfoCardWidget(),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDateCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.calendar_today, color: AppTheme.primaryColor, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Düzenlenen Tarih',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondaryColor),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                widget.record.dateString,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeCard({
-    required String title,
-    required TimeOfDay? time,
-    required VoidCallback onTap,
-    required VoidCallback onClear,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textSecondaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        time != null ? time.format(context) : 'Seçiniz',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: time != null ? color : AppTheme.textLightColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (time != null)
-                  IconButton(
-                    onPressed: onClear,
-                    icon: Icon(Icons.clear, color: AppTheme.errorColor),
-                    tooltip: 'Temizle',
-                  )
-                else
-                  Icon(Icons.touch_app, color: AppTheme.textLightColor, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWorkDurationCard() {
-    final checkIn = DateTime(2000, 1, 1, _checkInTime!.hour, _checkInTime!.minute);
-    final checkOut = DateTime(2000, 1, 1, _checkOutTime!.hour, _checkOutTime!.minute);
-    final duration = checkOut.difference(checkIn);
-
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.successColor.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.successColor.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.successColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.schedule, color: AppTheme.successColor, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Toplam Çalışma Süresi',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondaryColor),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$hours saat $minutes dakika',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.successColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, color: AppTheme.primaryColor, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Değişiklikleriniz otomatik olarak kaydedilir. Gelecek tarih veya saatler seçilemez. Sayfadan çıktığınızda son değişiklikler de kaydedilecektir.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppTheme.primaryColor, height: 1.4),
-            ),
-          ),
-        ],
       ),
     );
   }

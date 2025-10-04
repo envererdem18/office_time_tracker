@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/check_in_out.dart';
 import '../theme/app_theme.dart';
-import '../widgets/custom_button.dart';
+import '../widgets/atoms/demo_warning_widget.dart';
+import '../widgets/molecules/custom_button.dart';
+import '../widgets/molecules/greeting_card_widget.dart';
+import '../widgets/molecules/status_message_widget.dart';
+import '../widgets/molecules/today_status_card_widget.dart';
 
 // Demo için state provider'lar (sadece UI için)
 final demoHasCheckedInProvider = StateProvider<bool>((ref) => false);
@@ -29,7 +33,6 @@ class _DemoPageState extends ConsumerState<DemoPage> {
       _isCheckingIn = true;
     });
 
-    // 1 saniye simüle et
     await Future.delayed(const Duration(seconds: 1));
 
     try {
@@ -61,7 +64,6 @@ class _DemoPageState extends ConsumerState<DemoPage> {
       _isCheckingOut = true;
     });
 
-    // 1 saniye simüle et
     await Future.delayed(const Duration(seconds: 1));
 
     try {
@@ -98,6 +100,17 @@ class _DemoPageState extends ConsumerState<DemoPage> {
         backgroundColor: AppTheme.primaryColor,
       ),
     );
+  }
+
+  String _getGreetingMessage() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Günaydın! Bu demo sayfasında uygulamayı test edebilirsiniz.';
+    } else if (hour < 18) {
+      return 'İyi günler! Uygulamanın nasıl çalıştığını burada görebilirsiniz.';
+    } else {
+      return 'İyi akşamlar! Demo modunda uygulamayı keşfedin.';
+    }
   }
 
   @override
@@ -140,67 +153,15 @@ class _DemoPageState extends ConsumerState<DemoPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Demo uyarısı
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.warningColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.warningColor.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: AppTheme.warningColor, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Bu demo sayfasıdır. Veriler gerçek veritabanına kaydedilmez.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.warningColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const DemoWarningWidget(),
 
               const SizedBox(height: 24),
 
               // Karşılama metni
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.business, size: 48, color: AppTheme.primaryColor),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Demo Modunda!',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _getGreetingMessage(),
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge?.copyWith(color: AppTheme.textSecondaryColor),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              GreetingCardWidget(
+                title: 'Demo Modunda!',
+                message: _getGreetingMessage(),
+                isDemo: true,
               ),
 
               const SizedBox(height: 32),
@@ -224,182 +185,19 @@ class _DemoPageState extends ConsumerState<DemoPage> {
               const SizedBox(height: 24),
 
               // Bugünkü durum kartı (demo)
-              if (demoRecord != null) _buildTodayStatusCard(demoRecord),
+              if (demoRecord != null)
+                TodayStatusCardWidget(todayRecord: demoRecord, isDemo: true),
 
               // Durum mesajı
-              _buildStatusMessage(hasCheckedIn, hasCheckedOut),
+              StatusMessageWidget(
+                hasCheckedIn: hasCheckedIn,
+                hasCheckedOut: hasCheckedOut,
+                isDemo: true,
+              ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  Widget _buildTodayStatusCard(CheckInOut demoRecord) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.only(bottom: 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Demo Durum',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(color: AppTheme.primaryColor),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.warningColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'DEMO',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.warningColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTimeInfo(
-                  'Giriş',
-                  demoRecord.checkInTimeString,
-                  AppTheme.checkInColor,
-                  Icons.login,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildTimeInfo(
-                  'Çıkış',
-                  demoRecord.checkOutTimeString,
-                  AppTheme.checkOutColor,
-                  Icons.logout,
-                ),
-              ),
-            ],
-          ),
-          if (demoRecord.workDuration != null) ...[
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.access_time, color: AppTheme.primaryColor, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Toplam: ${demoRecord.workDurationString}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeInfo(String label, String time, Color color, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: color, size: 16),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondaryColor),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          time,
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(color: color, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusMessage(bool hasCheckedIn, bool hasCheckedOut) {
-    String message;
-    Color color;
-    IconData icon;
-
-    if (!hasCheckedIn) {
-      message = 'Demo: Giriş yapmak için yeşil butona basın';
-      color = AppTheme.checkInColor;
-      icon = Icons.info_outline;
-    } else if (!hasCheckedOut) {
-      message = 'Demo: Çıkış yapmayı unutmayın!';
-      color = AppTheme.warningColor;
-      icon = Icons.warning_amber_outlined;
-    } else {
-      message = 'Demo: Günün kaydı tamamlandı. Sıfırla butonuna basarak tekrar deneyin!';
-      color = AppTheme.successColor;
-      icon = Icons.check_circle_outline;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getGreetingMessage() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Günaydın! Bu demo sayfasında uygulamayı test edebilirsiniz.';
-    } else if (hour < 18) {
-      return 'İyi günler! Uygulamanın nasıl çalıştığını burada görebilirsiniz.';
-    } else {
-      return 'İyi akşamlar! Demo modunda uygulamayı keşfedin.';
-    }
   }
 }
