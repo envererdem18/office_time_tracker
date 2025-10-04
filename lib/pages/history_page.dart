@@ -9,7 +9,6 @@ import '../theme/app_theme.dart';
 import '../widgets/molecules/delete_confirm_dialog.dart';
 import '../widgets/molecules/record_details_dialog.dart';
 import '../widgets/organisms/filter_bottom_sheet_widget.dart';
-import '../widgets/organisms/history_summary_widget.dart';
 import '../widgets/organisms/records_list_widget.dart';
 
 class HistoryPage extends ConsumerStatefulWidget {
@@ -107,21 +106,12 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // İstatistik özeti
-            HistorySummaryWidget(records: filteredRecords),
-
-            // Kayıt listesi
-            RecordsListWidget(
-              records: filteredRecords,
-              onTap: _showRecordDetails,
-              onEdit: _editRecord,
-              onDelete: _deleteRecord,
-            ),
-          ],
-        ),
+      body: RecordsListWidget(
+        records: filteredRecords,
+        onTap: _showRecordDetails,
+        onEdit: _editRecord,
+        onDelete: _deleteRecord,
+        itemsPerPage: 20,
       ),
     );
   }

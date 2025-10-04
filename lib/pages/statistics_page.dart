@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/atoms/filter_info_widget.dart';
 import '../widgets/organisms/check_in_times_chart_widget.dart';
 import '../widgets/organisms/distribution_chart_widget.dart';
+import '../widgets/organisms/filter_bottom_sheet_widget.dart';
 import '../widgets/organisms/statistics_summary_widget.dart';
 import '../widgets/organisms/work_hours_chart_widget.dart';
 
@@ -21,12 +22,15 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
   late TabController _tabController;
   DateTime? _startDate;
   DateTime? _endDate;
-  bool _showAllTime = true;
+  bool _lastUsedMonthMode = false;
+  Set<int> _lastSelectedMonths = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _startDate = null;
+    _endDate = null;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(dateFilterProvider.notifier).state = null;
@@ -39,46 +43,50 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
     super.dispose();
   }
 
-  Future<void> _selectDateRange() async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: _startDate != null && _endDate != null
-          ? DateTimeRange(start: _startDate!, end: _endDate!)
-          : null,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(
-              context,
-            ).colorScheme.copyWith(primary: AppTheme.primaryColor),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
-        _showAllTime = false;
-      });
-      ref.read(dateFilterProvider.notifier).state = DateRange(
-        startDate: picked.start,
-        endDate: picked.end,
-      );
-    }
-  }
-
-  void _showAllTimeData() {
+  void _clearFilter() {
     setState(() {
       _startDate = null;
       _endDate = null;
-      _showAllTime = true;
+      // Görünüm türünü koruyarak sadece seçimleri temizle
+      _lastSelectedMonths.clear();
+      // _lastUsedMonthMode değiştirme - mevcut görünümde kal
     });
     ref.read(dateFilterProvider.notifier).state = null;
+  }
+
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FilterBottomSheetWidget(
+        initialStartDate: _startDate,
+        initialEndDate: _endDate,
+        initialMonthMode: _lastUsedMonthMode,
+        initialSelectedMonths: _lastSelectedMonths,
+        onDateRangeChanged: (start, end) {
+          setState(() {
+            _startDate = start;
+            _endDate = end;
+          });
+          if (start != null && end != null) {
+            ref.read(dateFilterProvider.notifier).state = DateRange(
+              startDate: start,
+              endDate: end,
+            );
+          } else {
+            ref.read(dateFilterProvider.notifier).state = null;
+          }
+        },
+        onStateChanged: (isMonthMode, selectedMonths) {
+          setState(() {
+            _lastUsedMonthMode = isMonthMode;
+            _lastSelectedMonths = selectedMonths;
+          });
+        },
+        onClear: _clearFilter,
+      ),
+    );
   }
 
   @override
@@ -92,37 +100,17 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (value) {
-              if (value == 'range') {
-                _selectDateRange();
-              } else if (value == 'all') {
-                _showAllTimeData();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'range',
-                child: Row(
-                  children: [
-                    Icon(Icons.date_range, size: 20),
-                    SizedBox(width: 8),
-                    Text('Tarih Aralığı Seç'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'all',
-                child: Row(
-                  children: [
-                    Icon(Icons.all_inclusive, size: 20),
-                    SizedBox(width: 8),
-                    Text('Tüm Zamanlar'),
-                  ],
-                ),
-              ),
-            ],
+          IconButton(
+            icon: Icon(
+              (_startDate != null && _endDate != null) ? Icons.filter_alt : Icons.tune,
+              color: (_startDate != null && _endDate != null)
+                  ? AppTheme.primaryColor
+                  : null,
+            ),
+            onPressed: _showFilterBottomSheet,
+            tooltip: (_startDate != null && _endDate != null)
+                ? 'Filtre Aktif'
+                : 'Filtrele',
           ),
         ],
         bottom: TabBar(
@@ -142,7 +130,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
         children: [
           // Filtre bilgisi
           FilterInfoWidget(
-            showAllTime: _showAllTime,
+            showAllTime: (_startDate == null && _endDate == null),
             startDate: _startDate,
             endDate: _endDate,
           ),

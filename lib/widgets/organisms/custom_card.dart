@@ -60,22 +60,35 @@ class CheckInOutCard extends StatelessWidget {
     this.onDelete,
   });
 
+  // Tarih string'ini parse etmek için yardımcı method
+  Map<String, String> _parseDateString(String dateStr) {
+    try {
+      // Format: "15 Ocak 2024, Pazartesi"
+      final parts = dateStr.split(' ');
+      if (parts.length >= 2) {
+        final day = parts[0];
+        final month = parts[1];
+        return {'day': day, 'month': month.length > 3 ? month.substring(0, 3) : month};
+      }
+    } catch (e) {
+      // Hata durumunda varsayılan değerler
+    }
+    return {'day': '--', 'month': '--'};
+  }
+
   @override
   Widget build(BuildContext context) {
+    final dateInfo = _parseDateString(date);
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
+            color: AppTheme.primaryColor.withValues(alpha: 0.06),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -84,186 +97,81 @@ class CheckInOutCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                // Tarih Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                // Tarih Bölümü
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        dateInfo['day']!,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.calendar_today,
-                        color: AppTheme.primaryColor,
-                        size: 20,
+                      Text(
+                        dateInfo['month']!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // Zaman Bilgileri
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Giriş - Çıkış
+                      Row(
                         children: [
+                          Icon(Icons.login, size: 14, color: AppTheme.checkInColor),
+                          const SizedBox(width: 4),
                           Text(
-                            'Çalışma Günü',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textSecondaryColor,
-                              fontWeight: FontWeight.w500,
+                            checkInTime,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.checkInColor,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(width: 12),
+                          Icon(Icons.logout, size: 14, color: AppTheme.checkOutColor),
+                          const SizedBox(width: 4),
                           Text(
-                            date,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.w700,
+                            checkOutTime,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.checkOutColor,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    if (onEdit != null || onDelete != null) ...[
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppTheme.backgroundColor,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (onEdit != null)
-                              IconButton(
-                                onPressed: onEdit,
-                                icon: Icon(
-                                  Icons.edit_outlined,
-                                  color: AppTheme.primaryColor,
-                                  size: 20,
-                                ),
-                                tooltip: 'Düzenle',
-                                padding: const EdgeInsets.all(8),
-                                constraints: const BoxConstraints(
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                ),
-                              ),
-                            if (onDelete != null)
-                              IconButton(
-                                onPressed: onDelete,
-                                icon: Icon(
-                                  Icons.delete_outline,
-                                  color: AppTheme.errorColor,
-                                  size: 20,
-                                ),
-                                tooltip: 'Sil',
-                                padding: const EdgeInsets.all(8),
-                                constraints: const BoxConstraints(
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                // Giriş ve Çıkış Saatleri Container
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.backgroundColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _TimeInfo(
-                          label: 'Giriş',
-                          time: checkInTime,
-                          color: AppTheme.checkInColor,
-                          icon: Icons.login,
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 40,
-                        color: AppTheme.textLightColor.withValues(alpha: 0.3),
-                      ),
-                      Expanded(
-                        child: _TimeInfo(
-                          label: 'Çıkış',
-                          time: checkOutTime,
-                          color: AppTheme.checkOutColor,
-                          icon: Icons.logout,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Toplam Süre
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.successColor.withValues(alpha: 0.1),
-                        AppTheme.successColor.withValues(alpha: 0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.successColor.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.successColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.schedule,
-                          color: AppTheme.successColor,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 4),
+                      // Toplam Süre
+                      Row(
                         children: [
-                          Text(
-                            'Toplam Çalışma Süresi',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.successColor.withValues(alpha: 0.8),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
+                          Icon(Icons.schedule, size: 14, color: AppTheme.successColor),
+                          const SizedBox(width: 4),
                           Text(
                             workDuration,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: AppTheme.successColor,
                               fontWeight: FontWeight.w700,
                             ),
@@ -273,56 +181,44 @@ class CheckInOutCard extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                // Action Buttons
+                if (onEdit != null || onDelete != null) ...[
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (onEdit != null)
+                        IconButton(
+                          onPressed: onEdit,
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            color: AppTheme.primaryColor,
+                            size: 18,
+                          ),
+                          tooltip: 'Düzenle',
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        ),
+                      if (onDelete != null)
+                        IconButton(
+                          onPressed: onDelete,
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: AppTheme.errorColor,
+                            size: 18,
+                          ),
+                          tooltip: 'Sil',
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _TimeInfo extends StatelessWidget {
-  final String label;
-  final String time;
-  final Color color;
-  final IconData icon;
-
-  const _TimeInfo({
-    required this.label,
-    required this.time,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: color, size: 18),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.textSecondaryColor,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          time,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(color: color, fontWeight: FontWeight.w700),
-        ),
-      ],
     );
   }
 }

@@ -27,7 +27,11 @@ class FilterInfoWidget extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            showAllTime ? Icons.all_inclusive : Icons.date_range,
+            showAllTime
+                ? Icons.all_inclusive
+                : (startDate != null && endDate != null)
+                ? Icons.date_range
+                : Icons.schedule,
             color: AppTheme.primaryColor,
             size: 20,
           ),
@@ -36,7 +40,11 @@ class FilterInfoWidget extends StatelessWidget {
             child: Text(
               showAllTime
                   ? 'Tüm zamanlar gösteriliyor'
-                  : 'Filtre: ${startDate!.day}/${startDate!.month}/${startDate!.year} - ${endDate!.day}/${endDate!.month}/${endDate!.year}',
+                  : startDate != null && endDate != null
+                  ? 'Filtre: ${startDate!.day}/${startDate!.month}/${startDate!.year} - ${endDate!.day}/${endDate!.month}/${endDate!.year}'
+                  : startDate != null
+                  ? 'Başlangıç: ${startDate!.day}/${startDate!.month}/${startDate!.year}'
+                  : 'Tarih seçiliyor...',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppTheme.primaryColor,
                 fontWeight: FontWeight.w500,
