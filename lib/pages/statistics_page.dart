@@ -20,21 +20,11 @@ class StatisticsPage extends ConsumerStatefulWidget {
 class _StatisticsPageState extends ConsumerState<StatisticsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  DateTime? _startDate;
-  DateTime? _endDate;
-  bool _lastUsedMonthMode = false;
-  Set<int> _lastSelectedMonths = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _startDate = null;
-    _endDate = null;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(dateFilterProvider.notifier).state = null;
-    });
   }
 
   @override
@@ -44,45 +34,30 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
   }
 
   void _clearFilter() {
-    setState(() {
-      _startDate = null;
-      _endDate = null;
-      // Görünüm türünü koruyarak sadece seçimleri temizle
-      _lastSelectedMonths.clear();
-      // _lastUsedMonthMode değiştirme - mevcut görünümde kal
-    });
-    ref.read(dateFilterProvider.notifier).state = null;
+    ref.read(filterStateProvider.notifier).state = ref.read(filterStateProvider).clear();
   }
 
   void _showFilterBottomSheet() {
+    final currentFilter = ref.read(filterStateProvider);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FilterBottomSheetWidget(
-        initialStartDate: _startDate,
-        initialEndDate: _endDate,
-        initialMonthMode: _lastUsedMonthMode,
-        initialSelectedMonths: _lastSelectedMonths,
+        initialStartDate: currentFilter.startDate,
+        initialEndDate: currentFilter.endDate,
+        initialMonthMode: currentFilter.isMonthMode,
+        initialSelectedMonths: currentFilter.selectedMonths,
         onDateRangeChanged: (start, end) {
-          setState(() {
-            _startDate = start;
-            _endDate = end;
-          });
-          if (start != null && end != null) {
-            ref.read(dateFilterProvider.notifier).state = DateRange(
-              startDate: start,
-              endDate: end,
-            );
-          } else {
-            ref.read(dateFilterProvider.notifier).state = null;
-          }
+          ref.read(filterStateProvider.notifier).state = ref
+              .read(filterStateProvider)
+              .copyWith(startDate: () => start, endDate: () => end);
         },
         onStateChanged: (isMonthMode, selectedMonths) {
-          setState(() {
-            _lastUsedMonthMode = isMonthMode;
-            _lastSelectedMonths = selectedMonths;
-          });
+          ref.read(filterStateProvider.notifier).state = ref
+              .read(filterStateProvider)
+              .copyWith(isMonthMode: isMonthMode, selectedMonths: selectedMonths);
         },
         onClear: _clearFilter,
       ),
@@ -92,6 +67,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
   @override
   Widget build(BuildContext context) {
     final statistics = ref.watch(statisticsProvider);
+    final filterState = ref.watch(filterStateProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -102,15 +78,11 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
         actions: [
           IconButton(
             icon: Icon(
-              (_startDate != null && _endDate != null) ? Icons.filter_alt : Icons.tune,
-              color: (_startDate != null && _endDate != null)
-                  ? AppTheme.primaryColor
-                  : null,
+              filterState.hasFilter ? Icons.filter_alt : Icons.tune,
+              color: filterState.hasFilter ? AppTheme.primaryColor : null,
             ),
             onPressed: _showFilterBottomSheet,
-            tooltip: (_startDate != null && _endDate != null)
-                ? 'Filtre Aktif'
-                : 'Filtrele',
+            tooltip: filterState.hasFilter ? 'Filtre Aktif' : 'Filtrele',
           ),
         ],
         bottom: TabBar(
@@ -130,9 +102,9 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
         children: [
           // Filtre bilgisi
           FilterInfoWidget(
-            showAllTime: (_startDate == null && _endDate == null),
-            startDate: _startDate,
-            endDate: _endDate,
+            showAllTime: !filterState.hasFilter,
+            startDate: filterState.startDate,
+            endDate: filterState.endDate,
           ),
 
           // Özet kartı

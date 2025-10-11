@@ -25,8 +25,61 @@ final todayCheckInOutProvider = Provider<CheckInOut?>((ref) {
   return databaseService.getTodayCheckInOut();
 });
 
-// Tarih filtresi için state provider
-final dateFilterProvider = StateProvider<DateRange?>((ref) => null);
+// Filtre state modeli
+class FilterState {
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final bool isMonthMode;
+  final Set<int> selectedMonths;
+
+  FilterState({
+    this.startDate,
+    this.endDate,
+    this.isMonthMode = false,
+    this.selectedMonths = const {},
+  });
+
+  FilterState copyWith({
+    DateTime? Function()? startDate,
+    DateTime? Function()? endDate,
+    bool? isMonthMode,
+    Set<int>? selectedMonths,
+  }) {
+    return FilterState(
+      startDate: startDate != null ? startDate() : this.startDate,
+      endDate: endDate != null ? endDate() : this.endDate,
+      isMonthMode: isMonthMode ?? this.isMonthMode,
+      selectedMonths: selectedMonths ?? this.selectedMonths,
+    );
+  }
+
+  FilterState clear() {
+    return FilterState(
+      startDate: null,
+      endDate: null,
+      isMonthMode: isMonthMode,
+      selectedMonths: {},
+    );
+  }
+
+  bool get hasFilter => startDate != null && endDate != null;
+
+  DateRange? get dateRange {
+    if (startDate != null && endDate != null) {
+      return DateRange(startDate: startDate!, endDate: endDate!);
+    }
+    return null;
+  }
+}
+
+// Global filtre state provider
+final filterStateProvider = StateProvider<FilterState>((ref) => FilterState());
+
+// Tarih filtresi için state provider (geriye dönük uyumluluk için)
+final dateFilterProvider = Provider<DateRange?>((ref) {
+  final filterState = ref.watch(filterStateProvider);
+  return filterState.dateRange;
+});
 
 // Filtrelenmiş kayıtları getiren provider
 final filteredCheckInOutListProvider = Provider<List<CheckInOut>>((ref) {
@@ -153,12 +206,13 @@ class Statistics {
       }
 
       // Günlük istatistik
+      // Giriş saatini ondalık formatta hesapla (örn: 9:30 = 9.5)
+      final checkInHourDecimal = record.checkInTime != null
+          ? record.checkInTime!.hour + (record.checkInTime!.minute / 60.0)
+          : 0.0;
+
       dailyStats.add(
-        DailyStats(
-          date: record.date,
-          workHours: hours,
-          checkInHour: record.checkInTime?.hour.toDouble() ?? 0,
-        ),
+        DailyStats(date: record.date, workHours: hours, checkInHour: checkInHourDecimal),
       );
     }
 

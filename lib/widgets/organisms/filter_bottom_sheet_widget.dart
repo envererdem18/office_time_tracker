@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers/database_provider.dart';
 import '../../theme/app_theme.dart';
 import 'custom_calendar_widget.dart';
 
@@ -258,14 +257,6 @@ class _FilterBottomSheetWidgetState extends ConsumerState<FilterBottomSheetWidge
                   }
                 });
                 widget.onDateRangeChanged(start, end);
-                if (start != null && end != null) {
-                  ref.read(dateFilterProvider.notifier).state = DateRange(
-                    startDate: start,
-                    endDate: end,
-                  );
-                } else {
-                  ref.read(dateFilterProvider.notifier).state = null;
-                }
               },
               onStateChanged: (isMonthMode, selectedMonths) {
                 setState(() {

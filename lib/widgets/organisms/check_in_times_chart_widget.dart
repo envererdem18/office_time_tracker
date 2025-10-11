@@ -15,9 +15,24 @@ class CheckInTimesChartWidget extends StatelessWidget {
       return _buildEmptyChart(context, 'Giriş saati verisi bulunamadı');
     }
 
-    final spots = statistics.dailyStats.asMap().entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), entry.value.checkInHour);
+    // Bar chart için veri noktalarını hazırla
+    final barGroups = statistics.dailyStats.asMap().entries.map((entry) {
+      return BarChartGroupData(
+        x: entry.key,
+        barRods: [
+          BarChartRodData(
+            toY: entry.value.checkInHour,
+            color: AppTheme.checkInColor,
+            width: 8,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+          ),
+        ],
+      );
     }).toList();
+
+    // Etiket gösterim aralığını hesapla (maksimum 8 etiket göster)
+    final dataLength = statistics.dailyStats.length;
+    final interval = (dataLength / 8).ceil();
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -44,8 +59,11 @@ class CheckInTimesChartWidget extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: LineChart(
-              LineChartData(
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceEvenly,
+                maxY: 11,
+                minY: 7,
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
@@ -58,12 +76,13 @@ class CheckInTimesChartWidget extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 40,
+                      interval: 1,
                       getTitlesWidget: (value, meta) {
                         return Text(
                           '${value.toInt()}:00',
                           style: const TextStyle(
                             color: AppTheme.textSecondaryColor,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         );
                       },
@@ -72,18 +91,25 @@ class CheckInTimesChartWidget extends StatelessWidget {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 30,
+                      reservedSize: 32,
                       getTitlesWidget: (value, meta) {
                         final index = value.toInt();
+                        // Sadece belirli aralıklarla etiket göster
+                        if (index % interval != 0 && index != dataLength - 1) {
+                          return const SizedBox.shrink();
+                        }
                         if (index < 0 || index >= statistics.dailyStats.length) {
-                          return const Text('');
+                          return const SizedBox.shrink();
                         }
                         final date = statistics.dailyStats[index].date;
-                        return Text(
-                          '${date.day}/${date.month}',
-                          style: const TextStyle(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 10,
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            '${date.day}/${date.month}',
+                            style: const TextStyle(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 10,
+                            ),
                           ),
                         );
                       },
@@ -95,19 +121,38 @@ class CheckInTimesChartWidget extends StatelessWidget {
                   topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
                 borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: AppTheme.checkInColor,
-                    barWidth: 3,
-                    dotData: const FlDotData(show: true),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: AppTheme.checkInColor.withValues(alpha: 0.1),
-                    ),
+                barGroups: barGroups,
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: AppTheme.checkInColor.withValues(alpha: 0.9),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final date = statistics.dailyStats[groupIndex].date;
+                      final hour = rod.toY.toInt();
+                      final minute = ((rod.toY - hour) * 60).toInt();
+                      return BarTooltipItem(
+                        '${date.day}/${date.month}\n',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        children: [
+                          TextSpan(
+                            text:
+                                '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
-                ],
+                ),
               ),
             ),
           ),
