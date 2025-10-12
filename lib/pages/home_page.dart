@@ -113,6 +113,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         title: const Text('Ofis Süre Takip'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.account_circle),
+          onPressed: () => context.pushNamed(AppRoute.profile.name),
+          tooltip: 'Profil',
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.play_circle_outline),

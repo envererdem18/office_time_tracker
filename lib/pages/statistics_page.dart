@@ -7,6 +7,7 @@ import '../widgets/atoms/filter_info_widget.dart';
 import '../widgets/organisms/check_in_times_chart_widget.dart';
 import '../widgets/organisms/distribution_chart_widget.dart';
 import '../widgets/organisms/filter_bottom_sheet_widget.dart';
+import '../widgets/organisms/late_overtime_chart_widget.dart';
 import '../widgets/organisms/statistics_summary_widget.dart';
 import '../widgets/organisms/work_hours_chart_widget.dart';
 
@@ -24,7 +25,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -91,10 +92,12 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
           unselectedLabelColor: AppTheme.textSecondaryColor,
           indicatorColor: AppTheme.primaryColor,
           dividerColor: Colors.transparent,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'Çalışma Saatleri'),
             Tab(text: 'Giriş Saatleri'),
             Tab(text: 'Dağılım'),
+            Tab(text: 'Geç Kalma & Fazla Mesai'),
           ],
         ),
       ),
@@ -118,6 +121,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
                 WorkHoursChartWidget(statistics: statistics),
                 CheckInTimesChartWidget(statistics: statistics),
                 DistributionChartWidget(statistics: statistics),
+                LateOvertimeChartWidget(statistics: statistics),
               ],
             ),
           ),

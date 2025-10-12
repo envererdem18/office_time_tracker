@@ -2,10 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/check_in_out.dart';
+import '../models/working_hours.dart';
 
 class DatabaseService {
   static const String _boxName = 'checkInOutBox';
+  static const String _workingHoursBoxName = 'workingHoursBox';
   late Box<CheckInOut> _box;
+  late Box<WorkingHours> _workingHoursBox;
 
   // Singleton pattern
   static final DatabaseService _instance = DatabaseService._internal();
@@ -16,7 +19,10 @@ class DatabaseService {
   Future<void> init() async {
     await Hive.initFlutter();
     Hive.registerAdapter(CheckInOutAdapter());
+    Hive.registerAdapter(WorkingHoursAdapter());
+    Hive.registerAdapter(TimeOfDayAdapter());
     _box = await Hive.openBox<CheckInOut>(_boxName);
+    _workingHoursBox = await Hive.openBox<WorkingHours>(_workingHoursBoxName);
 
     // Sadece ilk kez çalıştırıldığında eski integer key'leri temizle
     await _migrateOldKeysIfNeeded();
@@ -178,5 +184,41 @@ class DatabaseService {
       'Box values: ${_box.values.map((e) => '${e.date} - ${e.checkInTime} - ${e.checkOutTime}').toList()}',
     );
     debugPrint('=====================');
+  }
+
+  // ============ Working Hours CRUD ============
+
+  // Belirli bir gün için mesai saatlerini getir
+  WorkingHours? getWorkingHoursByWeekday(int weekday) {
+    return _workingHoursBox.get(weekday);
+  }
+
+  // Tüm mesai saatlerini getir
+  Map<int, WorkingHours> getAllWorkingHours() {
+    final Map<int, WorkingHours> workingHoursMap = {};
+    for (var i = 1; i <= 7; i++) {
+      final workingHours = _workingHoursBox.get(i);
+      if (workingHours != null) {
+        workingHoursMap[i] = workingHours;
+      }
+    }
+    return workingHoursMap;
+  }
+
+  // Mesai saatlerini güncelle veya oluştur
+  Future<void> saveWorkingHours(WorkingHours workingHours) async {
+    await _workingHoursBox.put(workingHours.weekday, workingHours);
+  }
+
+  // Belirli bir gün için mesai saatlerini sil
+  Future<void> deleteWorkingHours(int weekday) async {
+    await _workingHoursBox.delete(weekday);
+  }
+
+  // Tüm mesai saatlerini toplu kaydet
+  Future<void> saveAllWorkingHours(Map<int, WorkingHours> workingHoursMap) async {
+    for (var entry in workingHoursMap.entries) {
+      await _workingHoursBox.put(entry.key, entry.value);
+    }
   }
 }

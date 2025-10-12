@@ -6,13 +6,17 @@ import '../pages/demo_page.dart';
 import '../pages/edit_record_page.dart';
 import '../pages/history_page.dart';
 import '../pages/home_page.dart';
+import '../pages/profile_page.dart';
 import '../pages/statistics_page.dart';
+import '../pages/working_hours_page.dart';
 import 'route_shell_screen.dart';
 
 enum AppRoute {
   // home
   home,
   demo,
+  profile,
+  workingHours,
   // history
   history,
   edit,
@@ -47,6 +51,18 @@ class AppRouter {
                     path: AppRoute.demo.absolutePath,
                     name: AppRoute.demo.name,
                     builder: (context, state) => DemoPage(),
+                  ),
+                  GoRoute(
+                    path: AppRoute.profile.absolutePath,
+                    name: AppRoute.profile.name,
+                    builder: (context, state) => ProfilePage(),
+                    routes: [
+                      GoRoute(
+                        path: AppRoute.workingHours.absolutePath,
+                        name: AppRoute.workingHours.name,
+                        builder: (context, state) => WorkingHoursPage(),
+                      ),
+                    ],
                   ),
                 ],
               ),

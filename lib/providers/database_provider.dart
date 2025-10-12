@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/check_in_out.dart';
+import '../models/working_hours.dart';
 import '../services/database_service.dart';
 
 // DatabaseService provider
@@ -144,10 +145,19 @@ final updateRecordActionProvider = Provider<Future<void> Function(CheckInOut)>((
   };
 });
 
+// Working hours provider
+final workingHoursProvider = Provider<Map<int, WorkingHours>>((ref) {
+  final databaseService = ref.read(databaseServiceProvider);
+  // Database değişiklik notifier'ını watch et
+  ref.watch(_databaseChangeNotifierProvider);
+  return databaseService.getAllWorkingHours();
+});
+
 // İstatistikler için provider
 final statisticsProvider = Provider<Statistics>((ref) {
   final records = ref.watch(filteredCheckInOutListProvider);
-  return Statistics.fromRecords(records);
+  final workingHours = ref.watch(workingHoursProvider);
+  return Statistics.fromRecords(records, workingHours);
 });
 
 // Tarih aralığı sınıfı
@@ -165,6 +175,11 @@ class Statistics {
   final int totalWorkDays;
   final Map<String, int> workHoursDistribution;
   final List<DailyStats> dailyStats;
+  // Yeni metrikler
+  final int lateCheckIns;
+  final double averageLateMinutes;
+  final double totalOvertimeHours;
+  final int overtimeDays;
 
   Statistics({
     required this.averageWorkHours,
@@ -172,9 +187,16 @@ class Statistics {
     required this.totalWorkDays,
     required this.workHoursDistribution,
     required this.dailyStats,
+    required this.lateCheckIns,
+    required this.averageLateMinutes,
+    required this.totalOvertimeHours,
+    required this.overtimeDays,
   });
 
-  factory Statistics.fromRecords(List<CheckInOut> records) {
+  factory Statistics.fromRecords(
+    List<CheckInOut> records,
+    Map<int, WorkingHours> workingHoursMap,
+  ) {
     final validRecords = records.where((r) => r.workDuration != null).toList();
 
     if (validRecords.isEmpty) {
@@ -184,6 +206,10 @@ class Statistics {
         totalWorkDays: 0,
         workHoursDistribution: {},
         dailyStats: [],
+        lateCheckIns: 0,
+        averageLateMinutes: 0,
+        totalOvertimeHours: 0,
+        overtimeDays: 0,
       );
     }
 
@@ -191,6 +217,12 @@ class Statistics {
     Map<String, int> distribution = {'<8 saat': 0, '8-9 saat': 0, '>9 saat': 0};
 
     List<DailyStats> dailyStats = [];
+
+    // Yeni metrik hesaplamaları
+    int lateCheckIns = 0;
+    double totalLateMinutes = 0;
+    double totalOvertimeHours = 0;
+    int overtimeDays = 0;
 
     for (final record in validRecords) {
       final hours = record.workDuration!.inMinutes / 60.0;
@@ -211,8 +243,55 @@ class Statistics {
           ? record.checkInTime!.hour + (record.checkInTime!.minute / 60.0)
           : 0.0;
 
+      // Mesai saatlerine göre geç kalma ve fazla mesai hesaplama
+      final weekday = record.date.weekday;
+      final workingHours = workingHoursMap[weekday];
+
+      double? lateMinutes;
+      double? overtimeHours;
+
+      if (workingHours != null && workingHours.hasWorkingHours) {
+        // Geç kalma hesabı
+        if (record.checkInTime != null) {
+          final checkInMinutes =
+              record.checkInTime!.hour * 60 + record.checkInTime!.minute;
+          final expectedStartMinutes =
+              workingHours.startTime!.hour * 60 + workingHours.startTime!.minute;
+
+          if (checkInMinutes > expectedStartMinutes) {
+            lateMinutes = (checkInMinutes - expectedStartMinutes).toDouble();
+            lateCheckIns++;
+            totalLateMinutes += lateMinutes;
+          }
+        }
+
+        // Fazla mesai hesabı - Toplam çalışma saatine göre
+        if (record.workDuration != null) {
+          // Mesai başlangıç ve bitiş saatlerinden beklenen çalışma süresini hesapla
+          final expectedStartMinutes =
+              workingHours.startTime!.hour * 60 + workingHours.startTime!.minute;
+          final expectedEndMinutes =
+              workingHours.endTime!.hour * 60 + workingHours.endTime!.minute;
+          final expectedWorkMinutes = expectedEndMinutes - expectedStartMinutes;
+          final expectedWorkHours = expectedWorkMinutes / 60.0;
+
+          // Gerçek çalışma saati > beklenen çalışma saati ise fazla mesai var
+          if (hours > expectedWorkHours) {
+            overtimeHours = hours - expectedWorkHours;
+            totalOvertimeHours += overtimeHours;
+            overtimeDays++;
+          }
+        }
+      }
+
       dailyStats.add(
-        DailyStats(date: record.date, workHours: hours, checkInHour: checkInHourDecimal),
+        DailyStats(
+          date: record.date,
+          workHours: hours,
+          checkInHour: checkInHourDecimal,
+          lateMinutes: lateMinutes,
+          overtimeHours: overtimeHours,
+        ),
       );
     }
 
@@ -222,6 +301,10 @@ class Statistics {
       totalWorkDays: validRecords.length,
       workHoursDistribution: distribution,
       dailyStats: dailyStats,
+      lateCheckIns: lateCheckIns,
+      averageLateMinutes: lateCheckIns > 0 ? totalLateMinutes / lateCheckIns : 0,
+      totalOvertimeHours: totalOvertimeHours,
+      overtimeDays: overtimeDays,
     );
   }
 }
@@ -231,6 +314,14 @@ class DailyStats {
   final DateTime date;
   final double workHours;
   final double checkInHour;
+  final double? lateMinutes;
+  final double? overtimeHours;
 
-  DailyStats({required this.date, required this.workHours, required this.checkInHour});
+  DailyStats({
+    required this.date,
+    required this.workHours,
+    required this.checkInHour,
+    this.lateMinutes,
+    this.overtimeHours,
+  });
 }
