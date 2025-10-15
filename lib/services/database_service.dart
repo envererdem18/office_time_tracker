@@ -1,14 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../models/app_settings.dart';
 import '../models/check_in_out.dart';
 import '../models/working_hours.dart';
 
 class DatabaseService {
   static const String _boxName = 'checkInOutBox';
   static const String _workingHoursBoxName = 'workingHoursBox';
+  static const String _settingsBoxName = 'appSettingsBox';
+  static const String _settingsKey = 'settings';
   late Box<CheckInOut> _box;
   late Box<WorkingHours> _workingHoursBox;
+  late Box<AppSettings> _settingsBox;
 
   // Singleton pattern
   static final DatabaseService _instance = DatabaseService._internal();
@@ -21,8 +25,10 @@ class DatabaseService {
     Hive.registerAdapter(CheckInOutAdapter());
     Hive.registerAdapter(WorkingHoursAdapter());
     Hive.registerAdapter(TimeOfDayAdapter());
+    Hive.registerAdapter(AppSettingsAdapter());
     _box = await Hive.openBox<CheckInOut>(_boxName);
     _workingHoursBox = await Hive.openBox<WorkingHours>(_workingHoursBoxName);
+    _settingsBox = await Hive.openBox<AppSettings>(_settingsBoxName);
 
     // Sadece ilk kez çalıştırıldığında eski integer key'leri temizle
     await _migrateOldKeysIfNeeded();
@@ -220,5 +226,76 @@ class DatabaseService {
     for (var entry in workingHoursMap.entries) {
       await _workingHoursBox.put(entry.key, entry.value);
     }
+  }
+
+  // ============ Settings CRUD ============
+
+  // Ayarları getir
+  AppSettings getSettings() {
+    final settings = _settingsBox.get(_settingsKey);
+    if (settings == null) {
+      // İlk defa kullanılıyorsa default ayarları oluştur
+      final defaultSettings = AppSettings();
+      _settingsBox.put(_settingsKey, defaultSettings);
+      return defaultSettings;
+    }
+    return settings;
+  }
+
+  // Ayarları kaydet
+  Future<void> saveSettings(AppSettings settings) async {
+    await _settingsBox.put(_settingsKey, settings);
+  }
+
+  // Yol hesaplama ayarını güncelle
+  Future<void> updateCommuteTracking(bool enabled) async {
+    final settings = getSettings();
+    settings.enableCommuteTracking = enabled;
+    await saveSettings(settings);
+  }
+
+  // ============ Commute Actions ============
+
+  // Yola çık (commute departure)
+  Future<void> startCommute() async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    CheckInOut? existingRecord = getTodayCheckInOut();
+
+    if (existingRecord == null) {
+      // Yeni kayıt oluştur
+      final newRecord = CheckInOut(date: todayDate, commuteDepartureTime: today);
+      await addCheckInOut(newRecord);
+      debugPrint('✅ Yola çıkış kaydedildi: ${_getDateKey(todayDate)}');
+    } else {
+      // Mevcut kaydı güncelle
+      existingRecord.commuteDepartureTime = today;
+      await updateCheckInOut(existingRecord);
+      debugPrint('✅ Yola çıkış güncellendi: ${_getDateKey(todayDate)}');
+    }
+
+    debugBoxStatus();
+  }
+
+  // Dönüşü tamamla (return arrival)
+  Future<void> completeReturn() async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    CheckInOut? existingRecord = getTodayCheckInOut();
+
+    if (existingRecord != null) {
+      existingRecord.returnArrivalTime = today;
+      await updateCheckInOut(existingRecord);
+      debugPrint('✅ Dönüş tamamlandı: ${_getDateKey(todayDate)}');
+    } else {
+      // Eğer kayıt yoksa, yeni kayıt oluştur
+      final newRecord = CheckInOut(date: todayDate, returnArrivalTime: today);
+      await addCheckInOut(newRecord);
+      debugPrint('✅ Yeni dönüş kaydı oluşturuldu: ${_getDateKey(todayDate)}');
+    }
+
+    debugBoxStatus();
   }
 }

@@ -88,16 +88,34 @@ class _FilterBottomSheetWidgetState extends ConsumerState<FilterBottomSheetWidge
   }
 
   void _clearSelection() {
+    // Clear = Başlangıç durumuna dön (şu anki ay)
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0);
+
+    setState(() {
+      _startDate = startOfMonth;
+      _endDate = endOfMonth;
+      _selectedMonths = {now.month};
+      _isMonthSelectionMode = true;
+      _currentMonth = DateTime(now.year, now.month);
+    });
+    widget.onClear();
+    widget.onDateRangeChanged(startOfMonth, endOfMonth);
+    widget.onStateChanged(true, {now.month});
+  }
+
+  void _showAllTime() {
     setState(() {
       _startDate = null;
       _endDate = null;
-      // Görünüm türünü koruyarak sadece seçimleri temizle
       _selectedMonths.clear();
-      // _isMonthSelectionMode değiştirme - mevcut görünümde kal
+      _isMonthSelectionMode = false;
     });
     widget.onClear();
     widget.onDateRangeChanged(null, null);
-    widget.onStateChanged(_isMonthSelectionMode, <int>{});
+    widget.onStateChanged(false, <int>{});
+    Navigator.pop(context);
   }
 
   bool _hasActiveFilter() {
@@ -271,6 +289,8 @@ class _FilterBottomSheetWidgetState extends ConsumerState<FilterBottomSheetWidge
               },
               onPreviousMonth: _previousMonth,
               onNextMonth: _nextMonth,
+              onShowAllTime: _showAllTime,
+              showAllTimeButton: _startDate != null || _endDate != null,
             ),
           ),
 

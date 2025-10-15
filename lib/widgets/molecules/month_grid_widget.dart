@@ -6,11 +6,15 @@ import '../atoms/month_chip_widget.dart';
 class MonthGridWidget extends StatelessWidget {
   final Set<int> selectedMonths;
   final Function(int) onMonthTap;
+  final VoidCallback? onShowAllTime;
+  final bool showAllTimeButton;
 
   const MonthGridWidget({
     super.key,
     required this.selectedMonths,
     required this.onMonthTap,
+    this.onShowAllTime,
+    this.showAllTimeButton = true,
   });
 
   static const monthNames = [
@@ -107,6 +111,44 @@ class MonthGridWidget extends StatelessWidget {
                     }).toList(),
                   ),
                 ],
+              ),
+            ),
+
+          // Tüm Zamanlar butonu
+          if (onShowAllTime != null && showAllTimeButton)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 16),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onShowAllTime,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.successColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppTheme.successColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.all_inclusive, color: AppTheme.successColor, size: 24),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Tüm Zamanlar',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: AppTheme.successColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
         ],

@@ -15,6 +15,8 @@ class CustomCalendarWidget extends StatefulWidget {
   final Function(bool, Set<int>) onStateChanged;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
+  final VoidCallback? onShowAllTime;
+  final bool showAllTimeButton;
 
   const CustomCalendarWidget({
     super.key,
@@ -28,6 +30,8 @@ class CustomCalendarWidget extends StatefulWidget {
     required this.onStateChanged,
     required this.onPreviousMonth,
     required this.onNextMonth,
+    this.onShowAllTime,
+    this.showAllTimeButton = true,
   });
 
   @override
@@ -224,7 +228,12 @@ class _CustomCalendarWidgetState extends State<CustomCalendarWidget> {
         // Content Area
         Expanded(
           child: _isMonthSelectionMode
-              ? MonthGridWidget(selectedMonths: _selectedMonths, onMonthTap: _onMonthTap)
+              ? MonthGridWidget(
+                  selectedMonths: _selectedMonths,
+                  onMonthTap: _onMonthTap,
+                  onShowAllTime: widget.onShowAllTime,
+                  showAllTimeButton: widget.showAllTimeButton,
+                )
               : Column(
                   children: [
                     // Weekday Headers

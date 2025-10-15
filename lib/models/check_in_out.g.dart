@@ -20,19 +20,25 @@ class CheckInOutAdapter extends TypeAdapter<CheckInOut> {
       date: fields[0] as DateTime,
       checkInTime: fields[1] as DateTime?,
       checkOutTime: fields[2] as DateTime?,
+      commuteDepartureTime: fields[3] as DateTime?,
+      returnArrivalTime: fields[4] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CheckInOut obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
       ..write(obj.checkInTime)
       ..writeByte(2)
-      ..write(obj.checkOutTime);
+      ..write(obj.checkOutTime)
+      ..writeByte(3)
+      ..write(obj.commuteDepartureTime)
+      ..writeByte(4)
+      ..write(obj.returnArrivalTime);
   }
 
   @override

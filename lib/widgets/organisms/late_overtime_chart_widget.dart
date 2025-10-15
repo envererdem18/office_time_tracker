@@ -25,7 +25,7 @@ class LateOvertimeChartWidget extends StatelessWidget {
 
     // Mesai saati tanımlı olan günleri filtrele
     final statsWithWorkingHours = statistics.dailyStats
-        .where((stat) => stat.lateMinutes != null || stat.overtimeHours != null)
+        .where((stat) => stat.lateMinutes != null || stat.overtimeMinutes != null)
         .toList();
 
     if (statsWithWorkingHours.isEmpty) {
@@ -64,25 +64,23 @@ class LateOvertimeChartWidget extends StatelessWidget {
     // Filtrelenmiş tüm kayıtları kullan (tarih filtresine uygun)
     final recentStats = statsWithWorkingHours.toList();
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Geç Kalma Grafiği
-            _buildSectionTitle('Geç Kalma (Dakika)'),
-            const SizedBox(height: 8),
-            _buildLateChart(recentStats),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Geç Kalma Grafiği
+          _buildSectionTitle('Geç Kalma (Dakika)'),
+          const SizedBox(height: 8),
+          _buildLateChart(recentStats),
 
-            const SizedBox(height: 32),
+          const SizedBox(height: 32),
 
-            // Fazla Mesai Grafiği
-            _buildSectionTitle('Fazla Mesai (Saat)'),
-            const SizedBox(height: 8),
-            _buildOvertimeChart(recentStats),
-          ],
-        ),
+          // Fazla Mesai Grafiği
+          _buildSectionTitle('Fazla Mesai (Dakika)'),
+          const SizedBox(height: 8),
+          _buildOvertimeChart(recentStats),
+        ],
       ),
     );
   }
@@ -228,7 +226,7 @@ class LateOvertimeChartWidget extends StatelessWidget {
 
   Widget _buildOvertimeChart(List<DailyStats> stats) {
     final overtimeStats = stats
-        .where((s) => s.overtimeHours != null && s.overtimeHours! > 0)
+        .where((s) => s.overtimeMinutes != null && s.overtimeMinutes! > 0)
         .toList();
 
     if (overtimeStats.isEmpty) {
@@ -273,14 +271,16 @@ class LateOvertimeChartWidget extends StatelessWidget {
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
           maxY:
-              overtimeStats.map((s) => s.overtimeHours!).reduce((a, b) => a > b ? a : b) *
+              overtimeStats
+                  .map((s) => s.overtimeMinutes!)
+                  .reduce((a, b) => a > b ? a : b) *
               1.2,
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 final stat = overtimeStats[group.x.toInt()];
                 return BarTooltipItem(
-                  '${stat.date.day}/${stat.date.month}\n${stat.overtimeHours!.toStringAsFixed(1)} saat',
+                  '${stat.date.day}/${stat.date.month}\n${stat.overtimeMinutes!.toStringAsFixed(0)} dk',
                   const TextStyle(color: Colors.white, fontSize: 12),
                 );
               },
@@ -315,7 +315,7 @@ class LateOvertimeChartWidget extends StatelessWidget {
                 reservedSize: 40,
                 getTitlesWidget: (value, meta) {
                   return Text(
-                    value.toStringAsFixed(1),
+                    value.toInt().toString(),
                     style: const TextStyle(
                       fontSize: 10,
                       color: AppTheme.textSecondaryColor,
@@ -330,7 +330,7 @@ class LateOvertimeChartWidget extends StatelessWidget {
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            horizontalInterval: 1,
+            horizontalInterval: 30,
             getDrawingHorizontalLine: (value) {
               return FlLine(color: AppTheme.textLightColor, strokeWidth: 1);
             },
@@ -342,7 +342,7 @@ class LateOvertimeChartWidget extends StatelessWidget {
               x: index,
               barRods: [
                 BarChartRodData(
-                  toY: overtimeStats[index].overtimeHours!,
+                  toY: overtimeStats[index].overtimeMinutes!,
                   color: const Color(0xFF4CAF50),
                   width: 16,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),

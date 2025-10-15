@@ -246,6 +246,191 @@ class _CheckOutButtonState extends State<CheckOutButton> {
   }
 }
 
+// Yola Çık butonu (Long Press ile çalışır)
+class StartCommuteButton extends StatefulWidget {
+  final VoidCallback? onPressed;
+  final bool isEnabled;
+  final bool isLoading;
+
+  const StartCommuteButton({
+    super.key,
+    this.onPressed,
+    this.isEnabled = true,
+    this.isLoading = false,
+  });
+
+  @override
+  State<StartCommuteButton> createState() => _StartCommuteButtonState();
+}
+
+class _StartCommuteButtonState extends State<StartCommuteButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDisabled =
+        !widget.isEnabled || widget.isLoading || widget.onPressed == null;
+
+    return GestureDetector(
+      onLongPress: isDisabled ? null : widget.onPressed,
+      onTapDown: isDisabled ? null : (_) => setState(() => _isPressed = true),
+      onTapUp: isDisabled ? null : (_) => setState(() => _isPressed = false),
+      onTapCancel: isDisabled ? null : () => setState(() => _isPressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: double.infinity,
+        height: 80,
+        decoration: BoxDecoration(
+          color: isDisabled
+              ? AppTheme.disabledColor
+              : _isPressed
+              ? Colors.blue.withValues(alpha: 0.8)
+              : Colors.blue,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isDisabled || _isPressed
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.blue.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: widget.isLoading
+            ? const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.directions_car, color: Colors.white, size: 24),
+                  const SizedBox(width: 12),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Yola Çık',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Basılı tutun',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+// Dönüşü Tamamla butonu (Long Press ile çalışır)
+class CompleteReturnButton extends StatefulWidget {
+  final VoidCallback? onPressed;
+  final bool isEnabled;
+  final bool isLoading;
+
+  const CompleteReturnButton({
+    super.key,
+    this.onPressed,
+    this.isEnabled = true,
+    this.isLoading = false,
+  });
+
+  @override
+  State<CompleteReturnButton> createState() => _CompleteReturnButtonState();
+}
+
+class _CompleteReturnButtonState extends State<CompleteReturnButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDisabled =
+        !widget.isEnabled || widget.isLoading || widget.onPressed == null;
+
+    // Lacivert renk
+    const navyBlue = Color(0xFF1A237E);
+
+    return GestureDetector(
+      onLongPress: isDisabled ? null : widget.onPressed,
+      onTapDown: isDisabled ? null : (_) => setState(() => _isPressed = true),
+      onTapUp: isDisabled ? null : (_) => setState(() => _isPressed = false),
+      onTapCancel: isDisabled ? null : () => setState(() => _isPressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: double.infinity,
+        height: 80,
+        decoration: BoxDecoration(
+          color: isDisabled
+              ? AppTheme.disabledColor
+              : _isPressed
+              ? navyBlue.withValues(alpha: 0.8)
+              : navyBlue,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isDisabled || _isPressed
+              ? []
+              : [
+                  BoxShadow(
+                    color: navyBlue.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: widget.isLoading
+            ? const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.home, color: Colors.white, size: 24),
+                  const SizedBox(width: 12),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Dönüşü Tamamla',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Basılı tutun',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
 // Floating Action Button alternatifi
 class CustomFloatingButton extends StatelessWidget {
   final VoidCallback? onPressed;

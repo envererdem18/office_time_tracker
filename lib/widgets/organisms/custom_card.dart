@@ -45,6 +45,10 @@ class CheckInOutCard extends StatelessWidget {
   final String checkInTime;
   final String checkOutTime;
   final String workDuration;
+  final String? commuteDepartureTime;
+  final String? returnArrivalTime;
+  final String? outboundCommuteDuration;
+  final String? returnCommuteDuration;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -55,6 +59,10 @@ class CheckInOutCard extends StatelessWidget {
     required this.checkInTime,
     required this.checkOutTime,
     required this.workDuration,
+    this.commuteDepartureTime,
+    this.returnArrivalTime,
+    this.outboundCommuteDuration,
+    this.returnCommuteDuration,
     this.onTap,
     this.onEdit,
     this.onDelete,
@@ -139,6 +147,36 @@ class CheckInOutCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Yol bilgileri varsa göster (küçük font)
+                      if (commuteDepartureTime != null &&
+                          commuteDepartureTime != '--:--') ...[
+                        Row(
+                          children: [
+                            Icon(Icons.directions_car, size: 12, color: Colors.blue),
+                            const SizedBox(width: 4),
+                            Text(
+                              commuteDepartureTime!,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 11,
+                              ),
+                            ),
+                            if (outboundCommuteDuration != null &&
+                                outboundCommuteDuration != '--') ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                '($outboundCommuteDuration)',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.textSecondaryColor,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                      ],
                       // Giriş - Çıkış
                       Row(
                         children: [
@@ -163,6 +201,35 @@ class CheckInOutCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      // Dönüş bilgileri varsa göster (küçük font)
+                      if (returnArrivalTime != null && returnArrivalTime != '--:--') ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(Icons.home, size: 12, color: const Color(0xFF1A237E)),
+                            const SizedBox(width: 4),
+                            Text(
+                              returnArrivalTime!,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: const Color(0xFF1A237E),
+                                fontWeight: FontWeight.w500,
+                                fontSize: 11,
+                              ),
+                            ),
+                            if (returnCommuteDuration != null &&
+                                returnCommuteDuration != '--') ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                '($returnCommuteDuration)',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.textSecondaryColor,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       // Toplam Süre
                       Row(

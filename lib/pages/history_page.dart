@@ -67,7 +67,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         leading: kDebugMode
             ? IconButton(
                 icon: const Icon(Icons.bug_report, color: Colors.orange),
-                onPressed: _generateTestData,
+                onPressed: _showGenerateTestDataConfirmation,
                 tooltip: 'Test Verisi Oluştur',
               )
             : null,
@@ -101,6 +101,86 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
 
   Future<void> _editRecord(CheckInOut record) async {
     context.pushNamed(AppRoute.edit.name, extra: record);
+  }
+
+  void _showGenerateTestDataConfirmation() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: AppTheme.cardColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'Test Verisi Oluştur',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Tüm mevcut kayıtlar silinecek ve son 30 iş günü için test verisi oluşturulacak.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: AppTheme.textSecondaryColor),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: AppTheme.textSecondaryColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'İptal',
+                      style: TextStyle(fontSize: 16, color: AppTheme.textSecondaryColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _generateTestData();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.orange,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Oluştur',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _generateTestData() async {
@@ -151,11 +231,25 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             checkOutMinute,
           );
 
+          // Yola çıkış zamanı: Giriş saatinden 20-60 dakika önce
+          final outboundCommuteMinutes = 20 + random.nextInt(41); // 20-60 dakika
+          final commuteDepartureTime = checkInTime.subtract(
+            Duration(minutes: outboundCommuteMinutes),
+          );
+
+          // Eve varış zamanı: Çıkış saatinden 20-60 dakika sonra
+          final returnCommuteMinutes = 20 + random.nextInt(41); // 20-60 dakika
+          final returnArrivalTime = checkOutTime.add(
+            Duration(minutes: returnCommuteMinutes),
+          );
+
           // Yeni kayıt oluştur
           final newRecord = CheckInOut(
             date: dateOnly,
             checkInTime: checkInTime,
             checkOutTime: checkOutTime,
+            commuteDepartureTime: commuteDepartureTime,
+            returnArrivalTime: returnArrivalTime,
           );
 
           await dbService.addCheckInOut(newRecord);

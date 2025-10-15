@@ -24,6 +24,8 @@ class EditRecordPage extends ConsumerStatefulWidget {
 class _EditRecordPageState extends ConsumerState<EditRecordPage> {
   late TimeOfDay? _checkInTime;
   late TimeOfDay? _checkOutTime;
+  late TimeOfDay? _commuteDepartureTime;
+  late TimeOfDay? _returnArrivalTime;
   Timer? _saveTimer;
   bool _isLoading = false;
   bool _hasChanges = false;
@@ -36,6 +38,12 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
         : null;
     _checkOutTime = widget.record.checkOutTime != null
         ? TimeOfDay.fromDateTime(widget.record.checkOutTime!)
+        : null;
+    _commuteDepartureTime = widget.record.commuteDepartureTime != null
+        ? TimeOfDay.fromDateTime(widget.record.commuteDepartureTime!)
+        : null;
+    _returnArrivalTime = widget.record.returnArrivalTime != null
+        ? TimeOfDay.fromDateTime(widget.record.returnArrivalTime!)
         : null;
   }
 
@@ -149,6 +157,66 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     }
   }
 
+  Future<void> _selectCommuteDepartureTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _commuteDepartureTime ?? const TimeOfDay(hour: 8, minute: 0),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppTheme.primaryColor),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      if (_isTimeInFuture(picked)) {
+        _showFutureTimeWarning();
+        return;
+      }
+
+      setState(() {
+        _commuteDepartureTime = picked;
+        _hasChanges = true;
+      });
+      _scheduleAutoSave();
+    }
+  }
+
+  Future<void> _selectReturnArrivalTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _returnArrivalTime ?? const TimeOfDay(hour: 19, minute: 0),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppTheme.primaryColor),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      if (_isTimeInFuture(picked)) {
+        _showFutureTimeWarning();
+        return;
+      }
+
+      setState(() {
+        _returnArrivalTime = picked;
+        _hasChanges = true;
+      });
+      _scheduleAutoSave();
+    }
+  }
+
   Future<void> _saveChanges({bool showSnackBar = true}) async {
     if (!_hasChanges) return;
 
@@ -159,6 +227,8 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
     try {
       DateTime? newCheckInTime;
       DateTime? newCheckOutTime;
+      DateTime? newCommuteDepartureTime;
+      DateTime? newReturnArrivalTime;
 
       if (_checkInTime != null) {
         newCheckInTime = DateTime(
@@ -180,10 +250,32 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
         );
       }
 
+      if (_commuteDepartureTime != null) {
+        newCommuteDepartureTime = DateTime(
+          widget.record.date.year,
+          widget.record.date.month,
+          widget.record.date.day,
+          _commuteDepartureTime!.hour,
+          _commuteDepartureTime!.minute,
+        );
+      }
+
+      if (_returnArrivalTime != null) {
+        newReturnArrivalTime = DateTime(
+          widget.record.date.year,
+          widget.record.date.month,
+          widget.record.date.day,
+          _returnArrivalTime!.hour,
+          _returnArrivalTime!.minute,
+        );
+      }
+
       final updatedRecord = CheckInOut(
         date: widget.record.date,
         checkInTime: newCheckInTime,
         checkOutTime: newCheckOutTime,
+        commuteDepartureTime: newCommuteDepartureTime,
+        returnArrivalTime: newReturnArrivalTime,
       );
 
       final updateAction = ref.read(updateRecordActionProvider);
@@ -225,6 +317,8 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final commuteTrackingEnabled = ref.watch(commuteTrackingEnabledProvider);
+
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: _onPopInvoked,
@@ -291,6 +385,36 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
 
               const SizedBox(height: 24),
 
+              // Yol bilgileri (eğer aktifse)
+              if (commuteTrackingEnabled) ...[
+                Text(
+                  'Yol Bilgileri',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TimeCardWidget(
+                  title: 'Yola Çıkış Saati',
+                  time: _commuteDepartureTime,
+                  onTap: _selectCommuteDepartureTime,
+                  color: AppTheme.primaryColor,
+                  icon: Icons.directions_walk,
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Ofis bilgileri
+              Text(
+                'Ofis Bilgileri',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimaryColor,
+                ),
+              ),
+              const SizedBox(height: 12),
+
               // Giriş saati kartı
               TimeCardWidget(
                 title: 'Giriş Saati',
@@ -311,7 +435,7 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
                 icon: Icons.logout,
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               // Çalışma süresi önizlemesi
               if (_checkInTime != null && _checkOutTime != null)
@@ -319,6 +443,26 @@ class _EditRecordPageState extends ConsumerState<EditRecordPage> {
                   checkInTime: _checkInTime!,
                   checkOutTime: _checkOutTime!,
                 ),
+
+              // Dönüş yolu bilgileri (eğer aktifse)
+              if (commuteTrackingEnabled) ...[
+                const SizedBox(height: 24),
+                Text(
+                  'Dönüş Yolu',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TimeCardWidget(
+                  title: 'Eve Varış Saati',
+                  time: _returnArrivalTime,
+                  onTap: _selectReturnArrivalTime,
+                  color: AppTheme.primaryColor,
+                  icon: Icons.home,
+                ),
+              ],
 
               const SizedBox(height: 32),
 

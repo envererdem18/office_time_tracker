@@ -5,6 +5,7 @@ import '../providers/database_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/atoms/filter_info_widget.dart';
 import '../widgets/organisms/check_in_times_chart_widget.dart';
+import '../widgets/organisms/commute_times_chart_widget.dart';
 import '../widgets/organisms/distribution_chart_widget.dart';
 import '../widgets/organisms/filter_bottom_sheet_widget.dart';
 import '../widgets/organisms/late_overtime_chart_widget.dart';
@@ -25,7 +26,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -98,34 +99,39 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage>
             Tab(text: 'Giriş Saatleri'),
             Tab(text: 'Dağılım'),
             Tab(text: 'Geç Kalma & Fazla Mesai'),
+            Tab(text: 'Yol Süreleri'),
           ],
         ),
       ),
-      body: Column(
-        children: [
-          // Filtre bilgisi
-          FilterInfoWidget(
-            showAllTime: !filterState.hasFilter,
-            startDate: filterState.startDate,
-            endDate: filterState.endDate,
-          ),
-
-          // Özet kartı
-          StatisticsSummaryWidget(statistics: statistics),
-
-          // Grafikler
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                WorkHoursChartWidget(statistics: statistics),
-                CheckInTimesChartWidget(statistics: statistics),
-                DistributionChartWidget(statistics: statistics),
-                LateOvertimeChartWidget(statistics: statistics),
-              ],
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Filtre bilgisi
+            FilterInfoWidget(
+              showAllTime: !filterState.hasFilter,
+              startDate: filterState.startDate,
+              endDate: filterState.endDate,
             ),
-          ),
-        ],
+
+            // Özet kartı
+            StatisticsSummaryWidget(statistics: statistics),
+
+            // Grafikler - TabBarView ile swipe desteği
+            SizedBox(
+              height: 1000,
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  WorkHoursChartWidget(statistics: statistics),
+                  CheckInTimesChartWidget(statistics: statistics),
+                  DistributionChartWidget(statistics: statistics),
+                  LateOvertimeChartWidget(statistics: statistics),
+                  CommuteTimesChartWidget(statistics: statistics),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

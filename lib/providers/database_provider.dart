@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/app_settings.dart';
 import '../models/check_in_out.dart';
 import '../models/working_hours.dart';
 import '../services/database_service.dart';
@@ -55,10 +56,25 @@ class FilterState {
   }
 
   FilterState clear() {
+    // Clear = Başlangıç durumuna dön (şu anki ay)
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0);
+
+    return FilterState(
+      startDate: startOfMonth,
+      endDate: endOfMonth,
+      isMonthMode: true,
+      selectedMonths: {now.month},
+    );
+  }
+
+  FilterState clearToAllTime() {
+    // Tüm zamanları göster
     return FilterState(
       startDate: null,
       endDate: null,
-      isMonthMode: isMonthMode,
+      isMonthMode: false,
       selectedMonths: {},
     );
   }
@@ -73,8 +89,19 @@ class FilterState {
   }
 }
 
-// Global filtre state provider
-final filterStateProvider = StateProvider<FilterState>((ref) => FilterState());
+// Global filtre state provider - Default olarak içinde bulunulan ay
+final filterStateProvider = StateProvider<FilterState>((ref) {
+  final now = DateTime.now();
+  final startOfMonth = DateTime(now.year, now.month, 1);
+  final endOfMonth = DateTime(now.year, now.month + 1, 0);
+
+  return FilterState(
+    startDate: startOfMonth,
+    endDate: endOfMonth,
+    isMonthMode: true,
+    selectedMonths: {now.month},
+  );
+});
 
 // Tarih filtresi için state provider (geriye dönük uyumluluk için)
 final dateFilterProvider = Provider<DateRange?>((ref) {
@@ -153,6 +180,56 @@ final workingHoursProvider = Provider<Map<int, WorkingHours>>((ref) {
   return databaseService.getAllWorkingHours();
 });
 
+// Settings provider
+final settingsProvider = Provider<AppSettings>((ref) {
+  final databaseService = ref.read(databaseServiceProvider);
+  // Database değişiklik notifier'ını watch et
+  ref.watch(_databaseChangeNotifierProvider);
+  return databaseService.getSettings();
+});
+
+// Yol hesaplama ayarı provider - Basit StateProvider
+final commuteTrackingEnabledProvider = StateProvider<bool>((ref) {
+  // İlk değeri database'den al
+  final databaseService = ref.read(databaseServiceProvider);
+  return databaseService.getSettings().enableCommuteTracking;
+});
+
+// Yol hesaplama ayarını güncelleme action provider
+final updateCommuteTrackingActionProvider = Provider<Future<void> Function(bool)>((ref) {
+  return (bool enabled) async {
+    final databaseService = ref.read(databaseServiceProvider);
+    await databaseService.updateCommuteTracking(enabled);
+
+    // StateProvider'ı direkt güncelle
+    ref.read(commuteTrackingEnabledProvider.notifier).state = enabled;
+  };
+});
+
+// Yola çıkma action provider
+final startCommuteActionProvider = Provider<Future<void> Function()>((ref) {
+  return () async {
+    final databaseService = ref.read(databaseServiceProvider);
+    await databaseService.startCommute();
+    // Database değişiklik notifier'ını güncelle
+    ref.read(_databaseChangeNotifierProvider.notifier).state++;
+    ref.invalidate(checkInOutListProvider);
+    ref.invalidate(filteredCheckInOutListProvider);
+  };
+});
+
+// Dönüşü tamamlama action provider
+final completeReturnActionProvider = Provider<Future<void> Function()>((ref) {
+  return () async {
+    final databaseService = ref.read(databaseServiceProvider);
+    await databaseService.completeReturn();
+    // Database değişiklik notifier'ını güncelle
+    ref.read(_databaseChangeNotifierProvider.notifier).state++;
+    ref.invalidate(checkInOutListProvider);
+    ref.invalidate(filteredCheckInOutListProvider);
+  };
+});
+
 // İstatistikler için provider
 final statisticsProvider = Provider<Statistics>((ref) {
   final records = ref.watch(filteredCheckInOutListProvider);
@@ -178,8 +255,13 @@ class Statistics {
   // Yeni metrikler
   final int lateCheckIns;
   final double averageLateMinutes;
-  final double totalOvertimeHours;
+  final double totalOvertimeMinutes;
   final int overtimeDays;
+  // Yol metrikleri
+  final double averageOutboundCommuteMinutes;
+  final double averageReturnCommuteMinutes;
+  final double averageTotalCommuteMinutes;
+  final int daysWithCommute;
 
   Statistics({
     required this.averageWorkHours,
@@ -189,8 +271,12 @@ class Statistics {
     required this.dailyStats,
     required this.lateCheckIns,
     required this.averageLateMinutes,
-    required this.totalOvertimeHours,
+    required this.totalOvertimeMinutes,
     required this.overtimeDays,
+    required this.averageOutboundCommuteMinutes,
+    required this.averageReturnCommuteMinutes,
+    required this.averageTotalCommuteMinutes,
+    required this.daysWithCommute,
   });
 
   factory Statistics.fromRecords(
@@ -208,8 +294,12 @@ class Statistics {
         dailyStats: [],
         lateCheckIns: 0,
         averageLateMinutes: 0,
-        totalOvertimeHours: 0,
+        totalOvertimeMinutes: 0,
         overtimeDays: 0,
+        averageOutboundCommuteMinutes: 0,
+        averageReturnCommuteMinutes: 0,
+        averageTotalCommuteMinutes: 0,
+        daysWithCommute: 0,
       );
     }
 
@@ -221,8 +311,14 @@ class Statistics {
     // Yeni metrik hesaplamaları
     int lateCheckIns = 0;
     double totalLateMinutes = 0;
-    double totalOvertimeHours = 0;
+    double totalOvertimeMinutes = 0;
     int overtimeDays = 0;
+
+    // Yol metrikleri
+    double totalOutboundCommuteMinutes = 0;
+    double totalReturnCommuteMinutes = 0;
+    double totalTotalCommuteMinutes = 0;
+    int daysWithCommute = 0;
 
     for (final record in validRecords) {
       final hours = record.workDuration!.inMinutes / 60.0;
@@ -248,7 +344,7 @@ class Statistics {
       final workingHours = workingHoursMap[weekday];
 
       double? lateMinutes;
-      double? overtimeHours;
+      double? overtimeMinutes;
 
       if (workingHours != null && workingHours.hasWorkingHours) {
         // Geç kalma hesabı
@@ -265,7 +361,7 @@ class Statistics {
           }
         }
 
-        // Fazla mesai hesabı - Toplam çalışma saatine göre
+        // Fazla mesai hesabı - Toplam çalışma saatine göre (dakika cinsinden)
         if (record.workDuration != null) {
           // Mesai başlangıç ve bitiş saatlerinden beklenen çalışma süresini hesapla
           final expectedStartMinutes =
@@ -273,15 +369,38 @@ class Statistics {
           final expectedEndMinutes =
               workingHours.endTime!.hour * 60 + workingHours.endTime!.minute;
           final expectedWorkMinutes = expectedEndMinutes - expectedStartMinutes;
-          final expectedWorkHours = expectedWorkMinutes / 60.0;
 
-          // Gerçek çalışma saati > beklenen çalışma saati ise fazla mesai var
-          if (hours > expectedWorkHours) {
-            overtimeHours = hours - expectedWorkHours;
-            totalOvertimeHours += overtimeHours;
+          // Gerçek çalışma dakikası
+          final actualWorkMinutes = record.workDuration!.inMinutes.toDouble();
+
+          // Gerçek çalışma dakikası > beklenen çalışma dakikası ise fazla mesai var
+          if (actualWorkMinutes > expectedWorkMinutes) {
+            overtimeMinutes = actualWorkMinutes - expectedWorkMinutes;
+            totalOvertimeMinutes += overtimeMinutes;
             overtimeDays++;
           }
         }
+      }
+
+      // Yol sürelerini hesapla
+      double? outboundCommuteMinutes;
+      double? returnCommuteMinutes;
+      double? totalCommuteMinutes;
+
+      if (record.outboundCommuteDuration != null) {
+        outboundCommuteMinutes = record.outboundCommuteDuration!.inMinutes.toDouble();
+        totalOutboundCommuteMinutes += outboundCommuteMinutes;
+      }
+
+      if (record.returnCommuteDuration != null) {
+        returnCommuteMinutes = record.returnCommuteDuration!.inMinutes.toDouble();
+        totalReturnCommuteMinutes += returnCommuteMinutes;
+      }
+
+      if (record.totalCommuteDuration != null) {
+        totalCommuteMinutes = record.totalCommuteDuration!.inMinutes.toDouble();
+        totalTotalCommuteMinutes += totalCommuteMinutes;
+        daysWithCommute++;
       }
 
       dailyStats.add(
@@ -290,7 +409,10 @@ class Statistics {
           workHours: hours,
           checkInHour: checkInHourDecimal,
           lateMinutes: lateMinutes,
-          overtimeHours: overtimeHours,
+          overtimeMinutes: overtimeMinutes,
+          outboundCommuteMinutes: outboundCommuteMinutes,
+          returnCommuteMinutes: returnCommuteMinutes,
+          totalCommuteMinutes: totalCommuteMinutes,
         ),
       );
     }
@@ -303,8 +425,18 @@ class Statistics {
       dailyStats: dailyStats,
       lateCheckIns: lateCheckIns,
       averageLateMinutes: lateCheckIns > 0 ? totalLateMinutes / lateCheckIns : 0,
-      totalOvertimeHours: totalOvertimeHours,
+      totalOvertimeMinutes: totalOvertimeMinutes,
       overtimeDays: overtimeDays,
+      averageOutboundCommuteMinutes: daysWithCommute > 0
+          ? totalOutboundCommuteMinutes / daysWithCommute
+          : 0,
+      averageReturnCommuteMinutes: daysWithCommute > 0
+          ? totalReturnCommuteMinutes / daysWithCommute
+          : 0,
+      averageTotalCommuteMinutes: daysWithCommute > 0
+          ? totalTotalCommuteMinutes / daysWithCommute
+          : 0,
+      daysWithCommute: daysWithCommute,
     );
   }
 }
@@ -315,13 +447,19 @@ class DailyStats {
   final double workHours;
   final double checkInHour;
   final double? lateMinutes;
-  final double? overtimeHours;
+  final double? overtimeMinutes;
+  final double? outboundCommuteMinutes;
+  final double? returnCommuteMinutes;
+  final double? totalCommuteMinutes;
 
   DailyStats({
     required this.date,
     required this.workHours,
     required this.checkInHour,
     this.lateMinutes,
-    this.overtimeHours,
+    this.overtimeMinutes,
+    this.outboundCommuteMinutes,
+    this.returnCommuteMinutes,
+    this.totalCommuteMinutes,
   });
 }

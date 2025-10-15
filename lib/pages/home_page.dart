@@ -20,6 +20,8 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   bool _isCheckingIn = false;
   bool _isCheckingOut = false;
+  bool _isStartingCommute = false;
+  bool _isCompletingReturn = false;
 
   Future<void> _handleCheckIn() async {
     if (_isCheckingIn) return;
@@ -89,6 +91,76 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  Future<void> _handleStartCommute() async {
+    if (_isStartingCommute) return;
+
+    setState(() {
+      _isStartingCommute = true;
+    });
+
+    try {
+      final startCommuteAction = ref.read(startCommuteActionProvider);
+
+      // Sadece yola çıkışı kaydet
+      await startCommuteAction();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Yola çıkış kaydedildi!'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: AppTheme.errorColor),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isStartingCommute = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleCompleteReturn() async {
+    if (_isCompletingReturn) return;
+
+    setState(() {
+      _isCompletingReturn = true;
+    });
+
+    try {
+      final completeReturnAction = ref.read(completeReturnActionProvider);
+      await completeReturnAction();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Dönüş tamamlandı!'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: AppTheme.errorColor),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCompletingReturn = false;
+        });
+      }
+    }
+  }
+
   String _getGreetingMessage() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
@@ -103,9 +175,20 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final todayRecord = ref.watch(todayCheckInOutProvider);
+    final commuteTrackingEnabled = ref.watch(commuteTrackingEnabledProvider);
 
+    final bool hasCommuteDeparture = todayRecord?.commuteDepartureTime != null;
     final bool hasCheckedIn = todayRecord?.checkInTime != null;
     final bool hasCheckedOut = todayRecord?.checkOutTime != null;
+    final bool hasReturnArrival = todayRecord?.returnArrivalTime != null;
+
+    // Bugün için herhangi bir aksiyon alınmış mı kontrol et
+    final bool hasTodayAction =
+        todayRecord != null &&
+        (todayRecord.commuteDepartureTime != null ||
+            todayRecord.checkInTime != null ||
+            todayRecord.checkOutTime != null ||
+            todayRecord.returnArrivalTime != null);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -137,32 +220,93 @@ class _HomePageState extends ConsumerState<HomePage> {
 
               const SizedBox(height: 32),
 
-              // Giriş butonu
-              CheckInButton(
-                onPressed: hasCheckedIn ? null : _handleCheckIn,
-                isEnabled: !hasCheckedIn,
-                isLoading: _isCheckingIn,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Çıkış butonu
-              CheckOutButton(
-                onPressed: hasCheckedOut ? null : _handleCheckOut,
-                isEnabled: hasCheckedIn && !hasCheckedOut,
-                isLoading: _isCheckingOut,
-              ),
+              // Tek buton mantığı - duruma göre değişir
+              // Yol hesaplama kapalı - normal akış (Giriş -> Çıkış)
+              if (!commuteTrackingEnabled && !hasCheckedOut) ...[
+                if (!hasCheckedIn)
+                  CheckInButton(
+                    onPressed: _handleCheckIn,
+                    isEnabled: true,
+                    isLoading: _isCheckingIn,
+                  )
+                else
+                  CheckOutButton(
+                    onPressed: _handleCheckOut,
+                    isEnabled: true,
+                    isLoading: _isCheckingOut,
+                  ),
+              ]
+              // Yol hesaplama açık - yol takip akışı (Yola Çık -> Giriş Yap -> Çıkış Yap -> Dönüşü Tamamla)
+              else if (commuteTrackingEnabled) ...[
+                // 1. Adım: Yol takibi başlatılmamışsa → Yola Çık
+                if (!hasCommuteDeparture) ...[
+                  // Bugün için herhangi bir kayıt varsa buton disabled
+                  if (hasTodayAction)
+                    Column(
+                      children: [
+                        StartCommuteButton(
+                          onPressed: null, // Disabled - widget otomatik gri yapacak
+                          isEnabled: false,
+                          isLoading: false,
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            'Yol hesaplama yarından itibaren geçerli olacak',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondaryColor,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    )
+                  // Bugün için hiç kayıt yoksa buton aktif
+                  else
+                    StartCommuteButton(
+                      onPressed: _handleStartCommute,
+                      isEnabled: true,
+                      isLoading: _isStartingCommute,
+                    ),
+                ]
+                // 2. Adım: Yola çıkıldı ama giriş yapılmadıysa → Giriş Yap
+                else if (!hasCheckedIn)
+                  CheckInButton(
+                    onPressed: _handleCheckIn,
+                    isEnabled: true,
+                    isLoading: _isCheckingIn,
+                  )
+                // 3. Adım: Giriş yapıldı ama çıkış yapılmadıysa → Çıkış Yap
+                else if (!hasCheckedOut)
+                  CheckOutButton(
+                    onPressed: _handleCheckOut,
+                    isEnabled: true,
+                    isLoading: _isCheckingOut,
+                  )
+                // 4. Adım: Çıkış yapıldı ama dönüş tamamlanmadıysa → Dönüşü Tamamla
+                else if (!hasReturnArrival)
+                  CompleteReturnButton(
+                    onPressed: _handleCompleteReturn,
+                    isEnabled: true,
+                    isLoading: _isCompletingReturn,
+                  ),
+                // hasReturnArrival = true ise hiçbir buton gösterme (gün tamamlandı)
+              ],
 
               const SizedBox(height: 24),
 
               // Bugünkü durum kartı
               if (todayRecord != null) TodayStatusCardWidget(todayRecord: todayRecord),
 
-              // Durum mesajı
-              StatusMessageWidget(
-                hasCheckedIn: hasCheckedIn,
-                hasCheckedOut: hasCheckedOut,
-              ),
+              // Durum mesajı (sadece yol hesaplama kapalıysa)
+              if (!commuteTrackingEnabled)
+                StatusMessageWidget(
+                  hasCheckedIn: hasCheckedIn,
+                  hasCheckedOut: hasCheckedOut,
+                ),
             ],
           ),
         ),
